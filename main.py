@@ -2,30 +2,29 @@ from serial import Serial
 import RPi.GPIO as GPIO
 import time
 
-def MotorBehavior(interval, pins, op):
+def nSignal(index):
+  index+=1
+  if index >= 4:
+    return 0
+  return index
+
+def pSignal(index):
+  index-=1
+  if index < 0:
+    return 3
+  return index
+
+def MotorBehavior(interval, lpins, rpins, lh, rh):
   signales = [
       [GPIO.HIGH, GPIO.LOW, GPIO.LOW, GPIO.LOW],
       [GPIO.LOW, GPIO.HIGH, GPIO.LOW, GPIO.LOW],
       [GPIO.LOW, GPIO.LOW, GPIO.HIGH, GPIO.LOW],
       [GPIO.LOW, GPIO.LOW, GPIO.LOW, GPIO.HIGH]
       ]
-  if op == 'w':
-    for i in range(4):
-      GPIO.output(pins[0], signales[i][0])
-      GPIO.output(pins[1], signales[i][1])
-      GPIO.output(pins[2], signales[i][2])
-      GPIO.output(pins[3], signales[i][3])
-      time.sleep(interval)
-  elif op == 's':
-    for i in range(4):
-      GPIO.output(pins[3] ,signales[i][0])
-      GPIO.output(pins[2] ,signales[i][1])
-      GPIO.output(pins[1] ,signales[i][2])
-      GPIO.output(pins[0] ,signales[i][3])
-      time.sleep(interval)
-  elif op == 'x':
-    for i in range(4):
-      GPIO.output(pins[i], GPIO.LOW)
+  for i in range(4):
+    GPIO.output(lpins[i], signales[lh][i])
+    GPIO.output(rpins[i], signales[rh][i])
+
 
 class EnhancedSerial(Serial):
   def __init__(self, *args, **kwargs):
@@ -73,34 +72,40 @@ if __name__=='__main__':
   GPIO.setmode(GPIO.BCM)
   for i in oPinsR+oPinsL:
     GPIO.setup(i, GPIO.OUT)
+  
+  rMotorH = 0 
+  lMotorH = 0
 
   while True:
     tmp = s.readline(timeout=0.001)
-    if tmp == '':
-      tmp = op;
+    # if tmp == '':
+    #   tmp = op;
     print tmp, op
     #@comment Motor behavior
-    if tmp == 'q':
+    if tmp == 't':
       break
     elif tmp == 'f':
-      MotorBehavior(timeInterval, oPinsR, 'w') 
-      MotorBehavior(timeInterval, oPinsL, 'w') 
+      rMotorH = nSignal(rMotorH)
+      lMotorH = nSignal(lMotorH)
       if  op != 'f':
         op = tmp
     elif tmp == 'b':
-      MotorBehavior(timeInterval, oPinsR, 's') 
-      MotorBehavior(timeInterval, oPinsL, 's') 
+      rMotorH = pSignal(rMotorH)
+      lMotorH = pSignal(lMotorH)
       if  op != 'b':
         op = tmp
     elif tmp == 'r':
-      MotorBehavior(timeInterval, oPinsR, 'w') 
-      MotorBehavior(timeInterval, oPinsL, 'x') 
+      rMotorH = nSignal(rMotorH)
+      lMotorH = pSignal(lMotorH)
       if op != 'r':
         op = tmp
     elif tmp == 'l':
-      MotorBehavior(timeInterval, oPinsR, 'x') 
-      MotorBehavior(timeInterval, oPinsL, 'w') 
+      rMotorH = pSignal(rMotorH)
+      lMotorH = nSignal(lMotorH)
       if  op != 'l':
         op = tmp
-
+    elif tmp == 's':
+      if  op != 's':
+        op = tmp
+    MotorBehavior(timeInterval, oPinsL, oPinsR, rMotorH, lMotorH) 
 GPIO.cleanup()
